@@ -1,0 +1,18 @@
+# macOS metadata
+.DS_Store
+
+# Historical local working materials and generated office files.
+# They can contain customer, organization, or author-specific information.
+work/
+output/
+*.docx
+*.wpt
+*.pdf
+*.png
+
+# The sanitized DOCX is the executable master template shipped with the Skill.
+!assets/master-template.docx
+
+# Python cache
+__pycache__/
+*.py[cod]

@@ -1,0 +1,43 @@
+{
+  "content_marker": "{{AI_CONTENT}}",
+  "font_ascii": "FangSong_GB2312",
+  "font_east_asia": "仿宋_GB2312",
+  "styles": {
+    "markdown_h1_document_title": "文档标题",
+    "markdown_h2_body_level_1": "heading 1",
+    "markdown_h3_body_level_2": "heading 2",
+    "markdown_h4_body_level_3": "heading 3",
+    "markdown_h5_body_level_4": "heading 4",
+    "body": "Normal",
+    "table_body": "表格正文",
+    "table": "Normal Table"
+  },
+  "page": {
+    "size": "A4 portrait",
+    "margin_top_mm": 25.4,
+    "margin_bottom_mm": 25.4,
+    "margin_left_mm": 25.4,
+    "margin_right_mm": 25.4
+  },
+  "front_matter": {
+    "cover_start_page": 1,
+    "toc_start_page": 2,
+    "body_minimum_start_page": 3,
+    "toc_heading_levels": "Markdown H2/heading 1 -> TOC 1; Markdown H3/heading 2 -> TOC 2",
+    "body_marker": "{{AI_CONTENT}}",
+    "toc_first_line_indent_mm": 0,
+    "toc_level_left_indent_mm": {
+      "toc_1": 0,
+      "toc_2": 7.41
+    }
+  },
+  "sizes_pt": {
+    "document_title": 15,
+    "heading_1": 15,
+    "heading_2": 15,
+    "heading_3": 14,
+    "heading_4": 14,
+    "heading_5": 14,
+    "table_body": 14
+  }
+}
