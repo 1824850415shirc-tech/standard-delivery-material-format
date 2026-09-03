@@ -35,9 +35,11 @@
 - `heading 5`: based on Normal, bold, inherited 14 pt, keep-with-next/keep-lines, outline level 4.
 - `表格正文`: based on Normal, 四号 (14 pt), single line spacing, no first-line indent.
 - `Normal Table`: default table style with 108 DXA left/right cell margins.
+- Local PNG and JPEG images are inserted as centered inline shapes, scaled proportionally to the available body width and at most 72% of the body height. Markdown alt text is stored in `wp:docPr/@descr`; an optional quoted image title is rendered as a centered caption below the image.
 - `toc 1` is created from `heading 1` (Markdown H2) with zero left indent. `toc 2` is created from `heading 2` (Markdown H3) with a 420-twip (about 7.41 mm/two-character) left indent. Both use zero first-line indent, dot leaders, and a right-aligned page-number tab at 9026 twips. No third TOC level is included.
 
 ## Known limitations
 
 - Cached TOC text is not final until fields are refreshed after body generation. WPS/Word field refresh is a required delivery step.
 - LibreOffice may omit Chinese glyphs when FangSong_GB2312 is unavailable on macOS. Use the unchanged DOCX in WPS for visual QA and keep the requested Windows font mapping in the final package.
+- Image paths are resolved from the Markdown file and must point to local PNG or JPEG files. The renderer rejects remote URLs and missing images instead of producing an incomplete document.

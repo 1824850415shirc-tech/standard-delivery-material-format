@@ -10,6 +10,7 @@ import sys
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
@@ -57,6 +58,10 @@ INLINE_RE = re.compile(
     r"(`[^`]+`|\*\*.+?\*\*|__.+?__|(?<!\*)\*[^*]+\*(?!\*)|(?<!_)_[^_]+_(?!_)|\[[^\]]+\]\([^)]+\))"
 )
 CHECKBOX_RE = re.compile(r"^\[([ xX])\]\s+(.+)$")
+IMAGE_RE = re.compile(r"^!\[([^\]]*)\]\((.+)\)$")
+LOCAL_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg"}
+EMU_PER_TWIP = 635
+MAX_IMAGE_HEIGHT_RATIO = 0.72
 
 
 @dataclass
@@ -95,6 +100,8 @@ def starts_block(lines: list[str], index: int) -> bool:
         return True
     if stripped.startswith("<!--"):
         return True
+    if IMAGE_RE.match(stripped):
+        return True
     if re.match(r"^#{1,6}\s+", stripped):
         return True
     if re.match(r"^(```+|~~~+)", stripped):
@@ -106,6 +113,21 @@ def starts_block(lines: list[str], index: int) -> bool:
     if "|" in stripped and index + 1 < len(lines) and is_table_separator(lines[index + 1]):
         return True
     return False
+
+
+def parse_image_target(payload: str) -> tuple[str, str | None]:
+    """Parse a local Markdown image destination and optional quoted caption."""
+    value = payload.strip()
+    caption = None
+    caption_match = re.search(r'\s+"([^"]*)"\s*$', value)
+    if caption_match:
+        caption = caption_match.group(1).strip() or None
+        value = value[: caption_match.start()].strip()
+    if value.startswith("<") and value.endswith(">"):
+        value = value[1:-1].strip()
+    if not value:
+        raise ValueError("Markdown image path must not be empty.")
+    return unquote(value), caption
 
 
 def parse_markdown(text: str) -> tuple[dict[str, str], list[Block]]:
@@ -122,6 +144,15 @@ def parse_markdown(text: str) -> tuple[dict[str, str], list[Block]]:
         if stripped.startswith("<!--"):
             while i < len(lines) and "-->" not in lines[i]:
                 i += 1
+            i += 1
+            continue
+        image_match = IMAGE_RE.match(stripped)
+        if image_match:
+            alt_text = image_match.group(1).strip()
+            if not alt_text:
+                raise ValueError("Markdown images require meaningful alt text.")
+            destination, caption = parse_image_target(image_match.group(2))
+            blocks.append(Block("image", destination, (alt_text, caption)))
             i += 1
             continue
         fence = re.match(r"^(```+|~~~+)\s*([^\s]*)", stripped)
@@ -486,6 +517,55 @@ def add_paragraph_before(document: Document, marker, style_name: str, text: str 
     return paragraph
 
 
+def resolve_local_image_path(markdown_path: Path, destination: str) -> Path:
+    parsed = urlparse(destination)
+    if parsed.scheme in {"http", "https", "data"} or destination.startswith("//"):
+        raise ValueError(f"Remote Markdown images are not supported: {destination}")
+    if parsed.scheme == "file":
+        image_path = Path(unquote(parsed.path))
+    elif parsed.scheme:
+        raise ValueError(f"Unsupported Markdown image source: {destination}")
+    else:
+        image_path = Path(destination)
+        if not image_path.is_absolute():
+            image_path = markdown_path.parent / image_path
+    image_path = image_path.resolve()
+    if image_path.suffix.casefold() not in LOCAL_IMAGE_SUFFIXES:
+        allowed = ", ".join(sorted(LOCAL_IMAGE_SUFFIXES))
+        raise ValueError(f"Unsupported image format for {image_path}; expected one of: {allowed}")
+    if not image_path.is_file():
+        raise FileNotFoundError(f"Markdown image not found: {image_path}")
+    return image_path
+
+
+def add_image_before(document: Document, marker, image_path: Path, alt_text: str, caption: str | None) -> None:
+    paragraph = add_paragraph_before(document, marker, "Normal")
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.paragraph_format.first_line_indent = Cm(0)
+    paragraph.paragraph_format.space_after = Pt(0)
+    shape = paragraph.add_run().add_picture(str(image_path))
+
+    section = document.sections[0]
+    maximum_width = available_width_twips(document) * EMU_PER_TWIP
+    body_height_twips = int(round(section.page_height.twips - section.top_margin.twips - section.bottom_margin.twips))
+    maximum_height = int(body_height_twips * MAX_IMAGE_HEIGHT_RATIO * EMU_PER_TWIP)
+    scale = min(1.0, maximum_width / shape.width, maximum_height / shape.height)
+    if scale < 1.0:
+        shape.width = int(shape.width * scale)
+        shape.height = int(shape.height * scale)
+
+    properties = shape._inline.docPr
+    properties.set("descr", alt_text)
+    properties.set("title", caption or alt_text)
+
+    if caption:
+        caption_paragraph = add_paragraph_before(document, marker, "Normal", caption)
+        caption_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        caption_paragraph.paragraph_format.first_line_indent = Cm(0)
+        caption_paragraph.paragraph_format.space_before = Pt(0)
+        caption_paragraph.paragraph_format.space_after = Pt(6)
+
+
 def set_paragraph_shading(paragraph, fill: str) -> None:
     ppr = paragraph._p.get_or_add_pPr()
     shd = OxmlElement("w:shd")
@@ -656,7 +736,15 @@ def render(input_path: Path, template_path: Path, output_path: Path) -> dict:
 
     numbering = NumberingManager(document)
     list_ids: dict[tuple[str, int], int] = {}
-    counts = {"paragraph": 0, "heading": 0, "list_item": 0, "quote": 0, "code": 0, "table": 0}
+    counts = {
+        "paragraph": 0,
+        "heading": 0,
+        "list_item": 0,
+        "quote": 0,
+        "code": 0,
+        "table": 0,
+        "image": 0,
+    }
 
     for block in blocks:
         if block.kind == "heading":
@@ -691,6 +779,11 @@ def render(input_path: Path, template_path: Path, output_path: Path) -> dict:
         elif block.kind == "table":
             add_table_before(document, marker, block.data)
             counts["table"] += 1
+        elif block.kind == "image":
+            alt_text, caption = block.extra
+            image_path = resolve_local_image_path(input_path, str(block.data))
+            add_image_before(document, marker, image_path, alt_text, caption)
+            counts["image"] += 1
         elif block.kind == "rule":
             paragraph = add_paragraph_before(document, marker, "Normal")
             paragraph.paragraph_format.first_line_indent = Cm(0)

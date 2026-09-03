@@ -19,6 +19,15 @@
     "margin_left_mm": 25.4,
     "margin_right_mm": 25.4
   },
+  "figure": {
+    "alignment": "center",
+    "path_base": "markdown_file_directory",
+    "allowed_sources": "local_png_or_jpeg",
+    "max_width": "body_width",
+    "max_height_ratio": 0.72,
+    "alt_text": "markdown_image_alt",
+    "caption": "optional_markdown_image_title"
+  },
   "front_matter": {
     "cover_start_page": 1,
     "toc_start_page": 2,
