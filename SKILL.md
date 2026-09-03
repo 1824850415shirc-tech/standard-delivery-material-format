@@ -14,6 +14,8 @@ Use the built-in Markdown templates and the retained executable DOCX master to c
 - Read `references/markdown-standard.md` and `references/natural-writing.md` before drafting the body.
 - Read `references/style-map.json` before rendering DOCX.
 - Use `assets/master-template.docx` as the executable template. Do not rebuild the document from a blank file.
+- For operation manuals and other screenshot-based documents, keep approved local images with the Markdown source and use the image syntax defined in `references/markdown-standard.md`; do not fetch or embed remote images.
+- When multiple iterations of test plans, cases, execution records, or test reports must be consolidated into a test-plan-and-case deliverable, read `references/test-material-merge.md`. Apply the merge method internally; do not add a standalone merge-history chapter unless the user requests one.
 - Use the Documents skill to render and inspect every final page.
 
 ## Mandatory HITL workflow
@@ -79,6 +81,8 @@ After explicit approval:
    - Avoid `通常`、`一般情况下` and `建议` unless real alternatives and their conditions are known.
    - Never output a generic `说明：` label or `> 说明：` block. Write the useful content as a normal paragraph; keep callouts only for clearly labeled attention, warning, risk, or constraint.
    - Treat every descriptive sentence in a Markdown template as drafting guidance. Do not copy guidance text into the final body.
+   - For operation manuals, check that each confirmed function has an applicable role, entry point, prerequisites, steps, result verification, exception handling, and source or screenshot evidence. Delete conditional sections that do not apply instead of leaving empty chapters.
+   - For test plans and cases, keep planned scope and criteria separate from actual execution results. Verify stable case IDs, detailed-case counts, requirement coverage, version applicability, execution rounds, evidence, and unresolved threshold conflicts before rendering.
 8. Save the approved UTF-8 Markdown and run:
 
    ```bash

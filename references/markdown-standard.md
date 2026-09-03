@@ -37,6 +37,7 @@ Example:
 - Use `- [ ]` only for executable checks or acceptance checklists. The DOCX renderer converts it to one compact checkbox marker; do not add another bullet or checkbox character.
 - Use block quotes only for explicitly labeled `注意`、`警告`、`约束` or failure conditions. Do not write `> 说明：...`; remove the label and use a normal paragraph instead.
 - Use tables only when rows share comparable fields. Keep narrative explanation outside tables.
+- Use `![替代文本](相对路径 "图号 图名")` for local PNG or JPEG evidence. Resolve relative paths from the Markdown file, require meaningful alt text, and use the optional quoted title as the visible figure caption. Do not fetch remote images.
 - Do not use raw HTML, manual tabs, repeated blank lines, or decorative Unicode separators.
 - Do not put credentials, tokens, secrets, or private keys into the document.
 - Represent missing required facts as `【待补充：具体字段】`; never fabricate them.
@@ -48,6 +49,14 @@ Example:
 - Keep the number of cells consistent across rows.
 - Prefer short field names and concise cell content.
 - Move long rationale or procedure text into prose beneath the table.
+
+## Image rules
+
+- Keep images beside the Markdown source or in a nearby project folder, and use relative paths so the document can be regenerated on another machine.
+- Use screenshots only when they help locate an entry, field, state, result, warning, or error. Place each screenshot immediately after the step it supports.
+- Remove accounts, tokens, internal addresses, personal information, and unapproved business data before adding an image.
+- Write the alt text as a short description of the visible evidence. When a visible caption is needed, use a title such as `"图 5-1 登录页面"` and keep numbering consistent with the chapter.
+- The renderer scales images proportionally to the A4 body area. Do not pre-stretch images or use screenshots whose labels are unreadable after fitting to the page.
 
 ## Source transformation
 

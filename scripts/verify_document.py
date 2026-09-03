@@ -15,7 +15,8 @@ from lxml import etree
 
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-NS = {"w": W_NS}
+WP_NS = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+NS = {"w": W_NS, "wp": WP_NS}
 TARGET_FONTS = {"FangSong_GB2312", "仿宋_GB2312"}
 HEADING_SIZES = {
     "文档标题": 15,
@@ -52,9 +53,14 @@ def toc_indent_matches(element, expected_left: int) -> bool:
     if indent is None:
         return expected_left == 0
     left = indent.get(f"{{{W_NS}}}left")
-    if int(left or 0) != expected_left:
+    left_chars = int(indent.get(f"{{{W_NS}}}leftChars") or 0)
+    expected_left_chars = {0: 0, 420: 200}.get(expected_left)
+    if left_chars:
+        if expected_left_chars is None or left_chars != expected_left_chars:
+            return False
+    elif int(left or 0) != expected_left:
         return False
-    for name in ("leftChars", "right", "rightChars", "firstLine", "firstLineChars", "hanging", "hangingChars"):
+    for name in ("right", "rightChars", "firstLine", "firstLineChars", "hanging", "hangingChars"):
         value = indent.get(f"{{{W_NS}}}{name}")
         if value not in (None, "0"):
             return False
@@ -71,6 +77,21 @@ def toc_tab_matches(element, expected_position: int) -> bool:
         and int(tab.get(f"{{{W_NS}}}pos") or 0) == expected_position
     ]
     return len(matching) == 1
+
+
+def toc_effective_format_matches(style_element, paragraph_element, property_name: str, matcher, expected: int) -> bool:
+    """Check the effective TOC formatting after paragraph overrides are applied.
+
+    Word commonly keeps TOC indents and tabs on both the paragraph style and the
+    paragraph. WPS may keep one property on the style and the other directly on
+    the paragraph after refreshing the field. In OOXML, a direct property wins
+    when present; otherwise the paragraph inherits the style property.
+    """
+    paragraph_property = paragraph_element.find(
+        f"./{{{W_NS}}}pPr/{{{W_NS}}}{property_name}"
+    )
+    source = paragraph_element if paragraph_property is not None else style_element
+    return matcher(source, expected)
 
 
 def verify(path: Path, final: bool = False) -> dict:
@@ -150,13 +171,23 @@ def verify(path: Path, final: bool = False) -> dict:
                 errors.append(f"TOC contains an unsupported level: {paragraph.style.name}")
                 continue
             expected = TOC_STYLE_INDENTS[name]
-            if not toc_indent_matches(paragraph.style.element, expected) or not toc_indent_matches(paragraph._p, expected):
+            if not toc_effective_format_matches(
+                paragraph.style.element,
+                paragraph._p,
+                "ind",
+                toc_indent_matches,
+                expected,
+            ):
                 errors.append(
                     f"TOC entry has the wrong indent for {paragraph.style.name}; "
                     f"expected {expected} twips: {paragraph.text[:60]}"
                 )
-            if not toc_tab_matches(paragraph.style.element, TOC_RIGHT_TAB_TWIPS) or not toc_tab_matches(
-                paragraph._p, TOC_RIGHT_TAB_TWIPS
+            if not toc_effective_format_matches(
+                paragraph.style.element,
+                paragraph._p,
+                "tabs",
+                toc_tab_matches,
+                TOC_RIGHT_TAB_TWIPS,
             ):
                 errors.append(
                     f"TOC entry has the wrong right tab for {paragraph.style.name}; "
@@ -186,6 +217,10 @@ def verify(path: Path, final: bool = False) -> dict:
             errors.append("Missing required package parts: " + ", ".join(missing))
         styles_root = etree.fromstring(package.read("word/styles.xml"))
         document_root = etree.fromstring(package.read("word/document.xml"))
+        image_properties = document_root.xpath("//wp:docPr", namespaces=NS)
+        for properties in image_properties:
+            if not (properties.get("descr") or "").strip():
+                errors.append("Generated images must contain meaningful alt text.")
         toc_instructions = document_root.xpath('//w:instrText[contains(., "TOC")]/text()', namespaces=NS)
         if not toc_instructions:
             errors.append("Document has no real TOC field.")
@@ -211,6 +246,7 @@ def verify(path: Path, final: bool = False) -> dict:
         "section_geometry": section_geometry,
         "paragraphs": len(document.paragraphs),
         "tables": len(document.tables),
+        "images": len(document.inline_shapes),
         "table_paragraphs": table_paragraphs,
         "page_break_indices": page_break_indices,
         "first_heading_index": heading_indices[0] if heading_indices else None,
