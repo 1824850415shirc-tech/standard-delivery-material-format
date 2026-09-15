@@ -1,26 +1,56 @@
 ---
 name: standard-delivery-material-format
-description: Create source-grounded Chinese project delivery documents as editable DOCX files from categorized Markdown templates through a mandatory human-in-the-loop workflow. Use for project charters, research plans and reports, implementation plans, requirements specifications, detailed or database designs, test plans and cases, test reports, operations manuals, system interface documents, user operation manuals, acceptance reports, and trial-operation reports. First collect source materials, then propose an outline for explicit confirmation, and only after approval generate natural prose and render it through the retained document styles.
+description: Create source-grounded Chinese project delivery documents as editable DOCX files, or normalize a user-supplied Markdown document to the Skill contract and render it directly, or import an existing DOCX and re-render it in the standard format. Use for project charters, research plans and reports, implementation plans, requirements specifications, detailed or database designs, test plans and cases, test reports, operations manuals, system interface documents, user operation manuals, acceptance reports, and trial-operation reports. New-document drafting uses a mandatory material and outline confirmation workflow; direct Markdown formatting and existing-DOCX import skip that drafting gate while preserving the supplied content.
 ---
 
 # Standard Delivery Material Format
 
-Use the built-in Markdown templates and the retained executable DOCX master to create Chinese delivery documents. Keep the process human-controlled, source-bound, and editable.
+Use the built-in Markdown templates and the retained executable DOCX master to create Chinese delivery documents. Keep the process source-bound and editable, and select the operating mode before requesting materials or changing the input.
 
-## Load resources
+## Choose the operating mode
 
-- Read `docs/材料清单.md` for the selected document type before requesting materials.
-- Select the project phase, then read the matching file under `templates/项目前期/`, `templates/项目过程/`, or `templates/项目收尾/` before proposing the outline.
-- Read `references/markdown-standard.md` and `references/natural-writing.md` before drafting the body.
+### Mode 1: draft a document
+
+Use drafting mode when the user asks to write, create, compile, or substantially rewrite a supported delivery document and has not supplied a complete Markdown document as the content baseline.
+
+- Follow the mandatory HITL workflow below.
+- Collect source materials, prepare a source-aware outline, and wait for explicit outline confirmation before drafting the body or rendering DOCX.
+
+### Mode 2: format and render supplied Markdown
+
+Use direct Markdown mode when the user supplies a complete `.md` file or Markdown text and asks to adjust its format, make it conform to this Skill, or render it as DOCX.
+
+- Treat the supplied Markdown as the approved content baseline. Do not restart material collection or request outline confirmation merely because the file does not match a built-in template.
+- Read and follow `references/direct-markdown-render.md`.
+- Normalize a copy of the Markdown before rendering. Preserve the original file unless the user explicitly asks to overwrite it.
+- Preserve facts, meaning, technical tokens, section scope, and local evidence. Formatting authorization does not authorize invented content or a substantive rewrite.
+- Deliver both the normalized Markdown and the rendered DOCX.
+
+### Mode 3: import and re-render an existing DOCX
+
+Use existing-DOCX mode when the user supplies a `.docx` file and asks to reformat it to the Skill standard, refresh its layout, or re-render it through the standard template.
+
+- Follow `references/existing-docx-import.md` to extract the DOCX, repair the known extraction losses, and normalize the copy before rendering.
+- Treat the extracted content as the approved content baseline. Do not restart material collection or request outline confirmation.
+- Read the cover fields from the supplied DOCX where clearly present; never invent front-matter values.
+- Preserve the supplied DOCX. Write the rendered output under a name that cannot collide with the input, and deliver both the normalized Markdown and the rendered DOCX.
+
+If a Markdown file or a DOCX is only one source among several for a new document, use drafting mode. If the requested change would materially alter scope, conclusions, obligations, or chapter intent, pause for that decision instead of treating it as formatting.
+
+## Load resources by mode
+
+- In drafting mode, read `docs/材料清单.md` for the selected document type before requesting materials. Select the project phase, then read the matching file under `templates/项目前期/`, `templates/项目过程/`, or `templates/项目收尾/` before proposing the outline. Read `references/markdown-standard.md` and `references/natural-writing.md` before drafting the body.
+- In direct Markdown mode, read `references/direct-markdown-render.md` and `references/markdown-standard.md`. Use the matching categorized template only as a structural comparison when the document type is unambiguous; do not add unsupported chapters just to match it. Read `references/natural-writing.md` only when the user also requests prose editing.
+- In existing-DOCX mode, read `references/existing-docx-import.md` and `references/markdown-standard.md`. The normalization rules of `references/direct-markdown-render.md` also apply to the extracted copy. Read `references/natural-writing.md` only when the user also requests prose editing.
 - Read `references/style-map.json` before rendering DOCX.
 - Use `assets/master-template.docx` as the executable template. Do not rebuild the document from a blank file.
 - For operation manuals and other screenshot-based documents, keep approved local images with the Markdown source and use the image syntax defined in `references/markdown-standard.md`; do not fetch or embed remote images.
 - When multiple iterations of test plans, cases, execution records, or test reports must be consolidated into a test-plan-and-case deliverable, read `references/test-material-merge.md`. Apply the merge method internally; do not add a standalone merge-history chapter unless the user requests one.
 - Use the Documents skill to render and inspect every final page.
 
-## Mandatory HITL workflow
+## Drafting mode: mandatory HITL workflow
 
-Follow the phases in order. Never combine the outline and full body in one response.
+This workflow applies only to Mode 1. Follow the phases in order. Never combine the outline and full body in one response.
 
 ### Phase 1: request source materials
 
@@ -83,26 +113,46 @@ After explicit approval:
    - Treat every descriptive sentence in a Markdown template as drafting guidance. Do not copy guidance text into the final body.
    - For operation manuals, check that each confirmed function has an applicable role, entry point, prerequisites, steps, result verification, exception handling, and source or screenshot evidence. Delete conditional sections that do not apply instead of leaving empty chapters.
    - For test plans and cases, keep planned scope and criteria separate from actual execution results. Verify stable case IDs, detailed-case counts, requirement coverage, version applicability, execution rounds, evidence, and unresolved threshold conflicts before rendering.
-8. Save the approved UTF-8 Markdown and run:
+8. Save the approved UTF-8 Markdown and complete the common validation, rendering, and finalization workflow below.
+
+When templates change, also run `python3 scripts/validate_templates.py`.
+
+If the user changes the approved chapter structure materially during body generation, pause, show the revised outline, and request approval again.
+
+## Direct Markdown mode
+
+Follow `references/direct-markdown-render.md` to inspect the supplied file, produce a non-destructive normalized Markdown copy, and resolve format issues before rendering. Do not apply the drafting-mode material request or outline approval gate unless the user expands the task into substantive document creation.
+
+## Existing DOCX mode
+
+Follow `references/existing-docx-import.md` to extract the supplied DOCX with `scripts/docx_to_markdown.py`, review the extraction report with the user, repair flattened code blocks, ordered lists, and tables against the source, and normalize the copy before the common rendering workflow. The supplied DOCX stays untouched. Do not apply the drafting-mode gates unless the user expands the task into substantive document creation.
+
+## Common Markdown-to-DOCX completion
+
+Both modes finish through this workflow:
+
+1. Resolve `PYTHON_BIN` from the bundled workspace dependencies.
+2. Run Markdown lint and fix every error before rendering:
 
    ```bash
    "$PYTHON_BIN" scripts/lint_markdown.py output.md
+   ```
+
+3. When prose was drafted or rewritten, also run the strict naturalness audit and resolve its findings without changing source-backed facts:
+
+   ```bash
    "$PYTHON_BIN" scripts/audit_naturalness.py output.md --strict
    ```
 
-9. Resolve `PYTHON_BIN` from the bundled workspace dependencies, then render and verify the editable DOCX:
+4. Render and verify the editable DOCX:
 
    ```bash
    "$PYTHON_BIN" scripts/render_document.py output.md --output output.docx
    "$PYTHON_BIN" scripts/verify_document.py output.docx
    ```
 
-10. Render every page with the Documents skill and inspect the cover, lists, tables, callouts, page breaks, and font fallback. Revise and rerender until clean.
-11. Refresh fields in WPS or Word, save, then run `scripts/finalize_document.py` and `scripts/verify_document.py --final` before calling the DOCX final.
-
-When templates change, also run `python3 scripts/validate_templates.py`.
-
-If the user changes the approved chapter structure materially during body generation, pause, show the revised outline, and request approval again.
+5. Use the Documents skill to render every page and inspect the cover, lists, tables, callouts, images, page breaks, and font fallback. Revise the normalized Markdown and rerender until clean.
+6. Refresh fields in WPS or Word, save, then run `scripts/finalize_document.py` and `scripts/verify_document.py --final` before calling the DOCX final.
 
 ## Supported templates
 
