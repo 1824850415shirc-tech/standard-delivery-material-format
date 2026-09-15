@@ -1,4 +1,4 @@
 interface:
   display_name: "Standard Delivery Material Format"
-  short_description: "通过 HITL 生成项目全生命周期的规范中文交付 DOCX"
-  default_prompt: "Use $standard-delivery-material-format to select a project-stage template, collect source materials, confirm the outline with me, and then produce an editable DOCX."
+  short_description: "通过 HITL 撰写，或规范化现有 Markdown / 导入旧 DOCX 并渲染为交付 DOCX"
+  default_prompt: "Use $standard-delivery-material-format to draft a source-grounded delivery document through outline confirmation, normalize my supplied Markdown and render it directly, or import my existing DOCX and re-render it in the standard format."
